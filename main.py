@@ -29,12 +29,9 @@ plugins: List[BasePlugin] = [
     PingPongPlugin(BOT_QQ_ID),
 ]
 
-
-@app.broadcast.receiver("GroupMessage")
 async def message_listener(app: Ariadne, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
-    # await app.send_message(group, "Hello, World!")
     reply_messages = []
 
     for plugin in plugins:
@@ -47,7 +44,7 @@ async def message_listener(app: Ariadne, message: MessageChain,
             continue
         if isinstance(sender, Friend):
             t = "friend"
-        elif isinstance(sender, Group):
+        elif isinstance(sender, Member):
             t = "group"
         elif isinstance(sender, Client):
             t = "client"
@@ -63,5 +60,20 @@ async def message_listener(app: Ariadne, message: MessageChain,
         if not plugin.is_activated:
             continue
         plugin.exit_plugin()
+    
+    for target, reply, quote in reply_messages:
+        await app.send_message(target, reply, quote=quote)
+
+@app.broadcast.receiver("GroupMessage")
+async def group_message_listener(app: Ariadne, message: MessageChain, 
+                           sender: Union[Friend, Member, Client, Stranger],
+                           source: Source, quote: Optional[Quote] = None):
+    await message_listener(app, message, sender, source, quote)
+
+@app.broadcast.receiver("FriendMessage")
+async def friend_message_listener(app: Ariadne, message: MessageChain, 
+                           sender: Union[Friend, Member, Client, Stranger],
+                           source: Source, quote: Optional[Quote] = None):
+    await message_listener(app, message, sender, source, quote)
 
 Ariadne.launch_blocking()

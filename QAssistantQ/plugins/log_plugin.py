@@ -1,13 +1,15 @@
 
 
 import json
-from typing import Any, Dict, List, Literal, Optional, Union
-from .base_plugin import BasePlugin, MessageSourceType
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from .base_plugin import BasePlugin, MessageSourceType, ReplyType
 
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import Friend, Member, Group, Client, Stranger
 from graia.ariadne.message import Quote
 from graia.ariadne.app import Source
+from graia.ariadne.event.message import MessageEvent, FriendMessage, GroupMessage
+
 
 class LogPlugin(BasePlugin):
     def __init__(self, bot_id: int) -> None:
@@ -20,7 +22,7 @@ class LogPlugin(BasePlugin):
     def do_plugin(self, type: MessageSourceType, message: MessageChain,
                     sender: Union[Friend, Member, Client, Stranger],
                     source: Source, quote: Optional[Quote] = None
-            ) -> Optional[List[Any]]:
+            ) -> Optional[List[ReplyType]]:
         log_object = {
             "type": type, 
             "message": message.as_persistent_string(),
