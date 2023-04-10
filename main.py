@@ -12,6 +12,7 @@ from QAssistantQ.plugins.base_plugin import BasePlugin
 from QAssistantQ.plugins.chat_plugin import ChatPlugin
 from QAssistantQ.plugins.log_plugin import LogPlugin
 from QAssistantQ.plugins.pingpong_plugin import PingPongPlugin
+from QAssistantQ.plugins.repeat_plugin import RepeatPlugin
 
 with open("config.json", "r", encoding="utf-8") as f:
     bot_config = json.loads(f.read())
@@ -29,6 +30,7 @@ plugins: List[BasePlugin] = [
     LogPlugin(BOT_QQ_ID),
     PingPongPlugin(BOT_QQ_ID),
     ChatPlugin(BOT_QQ_ID),
+    RepeatPlugin(BOT_QQ_ID),
 ]
 
 async def message_listener(app: Ariadne, message: MessageChain, 
