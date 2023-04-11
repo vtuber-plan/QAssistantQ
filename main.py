@@ -65,8 +65,8 @@ async def message_listener(app: Ariadne, message: MessageChain,
             continue
         plugin.exit_plugin()
     
-    for target, reply, quote in reply_messages:
-        await app.send_message(target, reply, quote=quote)
+    for target, reply, quote_reply in reply_messages:
+        await app.send_message(target, reply, quote=quote_reply)
 
 @app.broadcast.receiver("GroupMessage")
 async def group_message_listener(app: Ariadne, message: MessageChain, 

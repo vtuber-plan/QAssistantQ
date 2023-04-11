@@ -28,12 +28,14 @@ class RepeatPlugin(BasePlugin):
         group_id = sender.group.id
         history = self.history[group_id]
 
-        history.append(message)
+        history.append((sender, message))
         if len(history) > 5:
             history.pop(0)
         
-        if len(history) >= 3 and history[-1] == history[-2] and history[-2] == history[-3]:
-            return [sender.group, history[-1], False]
+        if len(history) >= 3 and history[-1][1] == history[-2][1] and history[-2][1] == history[-3][1] and \
+            history[-1][0].id != self.bot_id and history[-2][0].id != self.bot_id and history[-3][0].id != self.bot_id:
+            self.history.clear()
+            return [sender.group, history[-1][1], False]
 
     def exit_plugin(self):
         pass

@@ -18,24 +18,14 @@ from graia.ariadne.event.message import MessageEvent, FriendMessage, GroupMessag
 conv_xiahan = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
            "The assistant gives helpful, detailed, and polite answers to the human's questions."
-           "The name of assistant is XiaHan."
-           "助手的名字叫做夏寒.",
+           "The name of user is XiaHan."
+           "助手的名字叫做夏寒。",
     roles=("Human", "Assistant"),
     messages=(
-        ("Human", "What are the key differences between renewable and non-renewable energy sources?"),
-        ("Assistant",
-            "Renewable energy sources are those that can be replenished naturally in a relatively "
-            "short amount of time, such as solar, wind, hydro, geothermal, and biomass. "
-            "Here are some key differences between renewable and non-renewable energy sources:\n"
-            "1. Availability: Renewable energy sources are virtually inexhaustible, while non-renewable "
-            "energy sources are finite and will eventually run out.\n"
-            "2. Environmental impact: Renewable energy sources have a much lower environmental impact "
-            "than non-renewable sources, which can lead to air and water pollution, greenhouse gas emissions, "
-            "and other negative effects.\n"
-            "3. Cost: Renewable energy sources can be more expensive to initially set up, but they typically "
-            "have lower operational costs than non-renewable sources."),
+        ("Human", "你好"),
+        ("Assistant", "你好呀！"),
     ),
-    offset=2,
+    offset=6,
     sep_style=SeparatorStyle.SINGLE,
     sep="###",
 )
@@ -65,12 +55,13 @@ class ChatPlugin(BasePlugin):
             ) -> Optional[List[ReplyType]]:
         
         if type == "group":
+            group_id = sender.group.id
+            if group_id not in self.convs:
+                self.convs[group_id] = conv_xiahan.copy()
+            conv = self.convs[group_id]
             if self.is_asking_me(message, quote):
                 question = get_text(message).strip()
-                group_id = sender.group.id
-                if group_id not in self.convs:
-                    self.convs[group_id] = conv_xiahan.copy()
-                answer = self._query(self.convs[group_id], sender.name, question)
+                answer = self._query(conv, sender.name, question)
                 return [sender.group, Plain(answer), source]
         elif type == "friend":
             if self.is_asking_me(message, quote):
@@ -83,13 +74,15 @@ class ChatPlugin(BasePlugin):
 
     def _query(self, conv: Conversation, memberName: str, question: str) -> str:
         if len(conv.messages) > 23:
-            conv.messages = conv.messages[:16] + conv.messages[len(conv.messages) - 20 + 16:]
+            conv.messages = conv.messages[:conv_xiahan.offset] + conv.messages[len(conv.messages) - 20 + conv_xiahan.offset:]
+        # print(conv.messages)
 
         model_name = "vicuna-13b"
         max_new_tokens = 256
         worker_addr = "http://127.0.0.1:21002"
 
-        conv.append_message(conv.roles[0] + f"({memberName})", question)
+        conv.append_message(conv.roles[0], question)
+        conv.append_message(conv.roles[1], None)
         prompt = conv.get_prompt()
 
         headers = {"User-Agent": "fastchat Client"}
@@ -110,10 +103,9 @@ class ChatPlugin(BasePlugin):
                 # print(output, end="\r")
                 answer = output
 
-        remove_assistant = remove_prefix(answer.lstrip(), "Assistant: ")
-        remove_human = remove_prefix(remove_assistant, "Human: ")
-        conv.append_message(conv.roles[1], remove_human)
-        return remove_human.rstrip()
+        answer = remove_prefix(answer.lstrip(), conv.roles[1] + ": ").rstrip()
+        conv.messages[-1][-1] = answer
+        return answer
 
     def exit_plugin(self):
         pass
