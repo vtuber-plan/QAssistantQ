@@ -22,7 +22,7 @@ class Conversation:
 
     skip_next: bool = False
 
-    def get_prompt(self):
+    def get_prompt(self) -> str:
         if self.sep_style == SeparatorStyle.SINGLE:
             ret = self.system + self.sep
             for role, message in self.messages:
@@ -75,6 +75,23 @@ class Conversation:
             "sep2": self.sep2,
         }
 
+    def to_openai_messages(self):
+        messages = []
+        if self.system is not None:
+            messages.append({
+                "role": "system", "content": self.system
+            })
+        for role, message in self.messages:
+            if message:
+                messages.append({
+                    "role": role, "content":message
+                })
+            else:
+                messages.append({
+                    "role": role, "content": ""
+                })
+        return messages
+        
 
 conv_v1 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
