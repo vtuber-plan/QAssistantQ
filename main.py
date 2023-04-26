@@ -11,6 +11,7 @@ import json
 from QAssistantQ.plugins.base_plugin import BasePlugin
 from QAssistantQ.plugins.chat_plugin import ChatPlugin
 from QAssistantQ.plugins.chatgpt_plugin import ChatGPTPlugin
+from QAssistantQ.plugins.langchain_plugin import LangChainPlugin
 from QAssistantQ.plugins.log_plugin import LogPlugin
 from QAssistantQ.plugins.pingpong_plugin import PingPongPlugin
 from QAssistantQ.plugins.repeat_plugin import RepeatPlugin
@@ -30,7 +31,7 @@ BOT_QQ_ID = bot_config["account"]
 plugins: List[BasePlugin] = [
     LogPlugin(BOT_QQ_ID),
     PingPongPlugin(BOT_QQ_ID),
-    ChatGPTPlugin(BOT_QQ_ID),
+    LangChainPlugin(BOT_QQ_ID),
     RepeatPlugin(BOT_QQ_ID),
 ]
 
