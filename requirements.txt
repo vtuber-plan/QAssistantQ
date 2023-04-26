@@ -1,4 +1,5 @@
 graia-ariadne==0.11.3
-google-api-python-client
+duckduckgo-search==2.8.6
 requests
-langchain
+langchain==0.0.149
+arxiv==1.4.7
