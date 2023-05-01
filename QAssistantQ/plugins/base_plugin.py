@@ -59,4 +59,14 @@ class BasePlugin(object):
         if at is not None and at.target == self.bot_id:
             return True
         return False
+    
+    def is_at_me(self, message: MessageChain, quote: Optional[Quote]=None) -> bool:
+        at = get_first_or_none(message, At)
+        if at is not None and at.target == self.bot_id:
+            return True
+        return False
 
+    def is_replying_me(self, message: MessageChain, quote: Optional[Quote]=None) -> bool:
+        if quote is not None and quote.sender_id == self.bot_id:
+            return True
+        return False

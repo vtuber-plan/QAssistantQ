@@ -1,4 +1,5 @@
 import argparse
+import dataclasses
 import json
 from typing import Any, List, Optional, Union
 
@@ -22,6 +23,7 @@ with open("openai_key.txt", "r", encoding="utf-8") as f:
 
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
+MODEL_NAME = "gpt-3.5-turbo"
 
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
@@ -36,8 +38,13 @@ from langchain.prompts.chat import (
 )
 from langchain.schema import (
     AIMessage,
+    BaseLanguageModel,
+    BaseMessage,
+    ChatGeneration,
+    ChatResult,
     HumanMessage,
-    SystemMessage,
+    LLMResult,
+    PromptValue,
 )
 from langchain.memory import ChatMessageHistory, ConversationBufferMemory, ConversationBufferWindowMemory
 from langchain.utilities import SerpAPIWrapper
@@ -91,12 +98,25 @@ def remove_prefix(text: str, prefix: str):
 def get_text(message: MessageChain) -> str:
     return "".join([plain.text for plain in message.get(Plain)])
 
+class ChatOpenAILogger(ChatOpenAI):
+    def __call__(
+        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
+    ):
+        ret = {
+            "messages": [dataclasses.asdict(m) for m in messages],
+            "stop": stop
+        }
+        with open("chatgpt.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(ret, ensure_ascii=False) + '\n')
+        return self._generate(messages, stop=stop).generations[0].message
 
 class ChatGPTPlugin(BasePlugin):
     def __init__(self, bot_id: int) -> None:
         self.bot_id = bot_id
         self.convs = {}
         self.url = "https://openai.api2d.net/v1/chat/completions"
+        self.model = ChatOpenAILogger(model_name=MODEL_NAME, temperature=0.9, max_tokens=512)
+
         self.enable()
     
     def enter_plugin(self):

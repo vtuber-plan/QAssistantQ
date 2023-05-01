@@ -7,6 +7,7 @@ import requests
 import datetime
 
 from .base_plugin import BasePlugin, MessageSourceType, ReplyType
+from ..hexie import hexie
 
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import Friend, Member, Group, Client, Stranger
@@ -22,7 +23,12 @@ with open("openai_key.txt", "r", encoding="utf-8") as f:
     OPENAI_API_KEY = f.read()
 
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
+
+# os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
+# MODEL_NAME = "gpt-3.5-turbo"
+
+os.environ["OPENAI_API_BASE"] = "http://localhost:8000/v1"
+MODEL_NAME = "7b-bf16" # "Open-Llama-V1" # "moss-moon-003-sft" # "chatglm-6b"
 
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
@@ -69,7 +75,8 @@ ROLE_TEMPLATE = "猫娘是一种拟人化的生物，其行为似猫但类人。
 
 SYSTEM_TEMPLATE = ROLE_TEMPLATE + '\n' + \
 "如果提问后面跟着已知的搜索信息，可以跟着提示来回答啊。" \
-"下面是夏寒和人类的一段对话："
+"场景是在QQ聊天软件中的对话，群组名是{group_name}，群号是{group_id}。\n" \
+"下面夏寒和人类的一段对话："
 
 TOOL_TEMPLATE = ROLE_TEMPLATE + '\n' + \
 "尽可能地回答以下问题，你可以使用以下工具：\n" \
@@ -78,8 +85,8 @@ TOOL_TEMPLATE = ROLE_TEMPLATE + '\n' + \
 """
 Question: the input question you must answer
 Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
+Action: [{tool_names}]
+Action Input: action parameters
 Observation: the result of the action
 ... (this Thought/Action/Action Input/Observation can repeat N times)
 Thought: I now know the final answer
@@ -115,6 +122,7 @@ class CustomPromptTemplate(BaseChatPromptTemplate):
 class CustomOutputParser(AgentOutputParser):
     
     def parse(self, llm_output: str) -> Union[AgentAction, AgentFinish]:
+        # print(llm_output)
         # Check if agent should finish
         if "Final Answer:" in llm_output:
             return AgentFinish(
@@ -135,21 +143,32 @@ class CustomOutputParser(AgentOutputParser):
 
 from langchain.tools import DuckDuckGoSearchTool
 from langchain.utilities import ArxivAPIWrapper
+from langchain.utilities import PythonREPL
+from langchain.utilities import WikipediaAPIWrapper
 from .tools.math import MathTool
 from .tools.datetime import DatetimeTool
 from .tools.direct import DirectTool
+from .tools.crawl import CrawlTool
+from .tools.chat_history import ChatHistoryTool
+
+
 
 class LangChainPlugin(BasePlugin):
     def __init__(self, bot_id: int) -> None:
         self.bot_id = bot_id
         self.convs = {}
-        self.model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.9, max_tokens=512)
+        self.model = ChatOpenAI(model_name=MODEL_NAME, temperature=0.9, max_tokens=512)
 
         self.arxiv = ArxivAPIWrapper()
         self.search = DuckDuckGoSearchTool()
         self.math = MathTool()
         self.datetime = DatetimeTool()
-        self.direct = DirectTool()
+        # self.direct = DirectTool()
+        self.crawl = CrawlTool()
+        self.chat_history = ChatHistoryTool()
+        # self.python_repl = PythonREPL()
+        self.wikipedia_zh = WikipediaAPIWrapper(lang="zh")
+        self.wikipedia_en = WikipediaAPIWrapper(lang="en")
         self.tools = [
             Tool(
                 name = "Math",
@@ -157,7 +176,7 @@ class LangChainPlugin(BasePlugin):
                 description="Useful for when you need to evaluate math expressions."
             ),
             Tool(
-                name = "DuckDuckGo",
+                name = "Search",
                 func=self.search.run,
                 description="Call this to get DuckDuckGo search result, when you do not know how to answer."
             ),
@@ -172,19 +191,48 @@ class LangChainPlugin(BasePlugin):
                 description="Call this to use the Arxiv API to conduct searches and fetch document summaries. By default, it will return the document summaries of the top-k results of an input search."
             ),
             Tool(
-                name = "DirectOutput",
-                func=self.direct.run,
-                description="Call this when the question belongs to chit chat and can be answered directly without tools, param should be the original question."
-            )
+                name = "CrawlTool",
+                func=self.crawl.run,
+                description="Call this to get web page text, param is a http or https url."
+            ),
+            Tool(
+                name = "wikipedia_zh",
+                func=self.wikipedia_zh.run,
+                description="Call this to search and fetch wikipedia page summaries by chinese."
+            ),
+            Tool(
+                name = "wikipedia_en",
+                func=self.wikipedia_en.run,
+                description="Call this to search and fetch wikipedia page summaries by english."
+            ),
         ]
 
+        '''
+        Tool(
+            name = "PythonREPL",
+            func=self.python_repl.run,
+            description="Call this to get the result of python repl, param is python code."
+        ),
+        Tool(
+            name = "ChatHistoryTool",
+            func=self.chat_history.run,
+            description="Call this to search in chat history, param is a keyord list."
+        ),
+        Tool(
+            name = "DirectOutput",
+            func=self.direct.run,
+            description="Call this when the question belongs to chit chat and can be answered directly without tools, param should be the original question."
+        ),
+        '''
         self.enable()
     
     def enter_plugin(self):
         pass
 
-    def create_chat_prompt(self):
-        system_message_prompt = SystemMessagePromptTemplate.from_template(SYSTEM_TEMPLATE)
+    def create_chat_prompt(self, group_name: str, group_id: str):
+        system_template = SYSTEM_TEMPLATE.replace("{group_name}", group_name)
+        system_template = system_template.replace("{group_id}", group_id)
+        system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
         human_message_prompt = HumanMessagePromptTemplate.from_template("你好，能帮我做一些事情吗？")
         ai_message_prompt = AIMessagePromptTemplate.from_template("你好呀？有什么需要帮助呢？喵~~╰(○'◡'○)╮")
         history_prompt = MessagesPlaceholder(variable_name="chat_history")
@@ -198,9 +246,9 @@ class LangChainPlugin(BasePlugin):
         )
         return prompt
     
-    def create_chain(self):
+    def create_chain(self, group_name: str, group_id: str):
         # chat
-        chat_prompt = self.create_chat_prompt()
+        chat_prompt = self.create_chat_prompt(group_name, group_id)
         chat_memory = ConversationBufferWindowMemory(
             return_messages=True, 
             human_prefix="user", 
@@ -230,7 +278,7 @@ class LangChainPlugin(BasePlugin):
             human_prefix="user", 
             ai_prefix="assistant", 
             memory_key="chat_history", 
-            k=5
+            k=10
         )
         output_parser = CustomOutputParser()
         llm_chain = LLMChain(llm=self.model, prompt=tool_prompt)
@@ -269,18 +317,20 @@ class LangChainPlugin(BasePlugin):
         if type == "group":
             group_id = sender.group.id
             if group_id not in self.convs:
-                self.convs[group_id] = self.create_chain()
+                self.convs[group_id] = self.create_chain(sender.group.name, str(sender.group.id))
             conv = self.convs[group_id]
             if self.is_asking_me(message, quote) or "夏寒" in question or "寒寒" in question:
                 answer = conv.run(input=question)
+                answer = hexie(answer)
                 return [sender.group, Plain(answer), source]
         elif type == "friend":
             friend_id = sender.id
             if friend_id not in self.convs:
-                self.convs[friend_id] = self.create_chain()
+                self.convs[friend_id] = self.create_chain(sender.name, str(sender.id))
             conv = self.convs[friend_id]
             if self.is_asking_me(message, quote):
                 answer = conv.run(input=question)
+                answer = hexie(answer)
                 return [sender, Plain(answer), source]
 
     def exit_plugin(self):

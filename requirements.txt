@@ -3,3 +3,4 @@ duckduckgo-search==2.8.6
 requests
 langchain==0.0.149
 arxiv==1.4.7
+wikipedia==1.4.0

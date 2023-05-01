@@ -31,7 +31,7 @@ BOT_QQ_ID = bot_config["account"]
 plugins: List[BasePlugin] = [
     LogPlugin(BOT_QQ_ID),
     PingPongPlugin(BOT_QQ_ID),
-    LangChainPlugin(BOT_QQ_ID),
+    ChatGPTPlugin(BOT_QQ_ID),
     RepeatPlugin(BOT_QQ_ID),
 ]
 
@@ -81,5 +81,18 @@ async def friend_message_listener(app: Ariadne, message: MessageChain,
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
     await message_listener(app, message, sender, source, quote)
+
+@app.broadcast.receiver("TempMessage")
+async def temp_message_listener(app: Ariadne, message: MessageChain, 
+                           sender: Union[Friend, Member, Client, Stranger],
+                           source: Source, quote: Optional[Quote] = None):
+    await message_listener(app, message, sender, source, quote)
+
+@app.broadcast.receiver("StrangerMessage")
+async def stranger_message_listener(app: Ariadne, message: MessageChain, 
+                           sender: Union[Friend, Member, Client, Stranger],
+                           source: Source, quote: Optional[Quote] = None):
+    await message_listener(app, message, sender, source, quote)
+
 
 Ariadne.launch_blocking()

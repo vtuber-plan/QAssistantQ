@@ -4,6 +4,8 @@ from pydantic import Field
 
 from langchain.tools.base import BaseTool
 
+import random
+
 class MathTool(BaseTool):
     """Tool that adds the capability to evaluate math expressions."""
 
