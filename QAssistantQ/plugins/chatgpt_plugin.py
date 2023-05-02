@@ -1,7 +1,7 @@
 import argparse
 import dataclasses
 import json
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
@@ -25,6 +25,9 @@ os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
 MODEL_NAME = "gpt-3.5-turbo"
 
+# os.environ["OPENAI_API_BASE"] = "http://localhost:8000/v1"
+# MODEL_NAME = "7b-bf16" # "Open-Llama-V1" # "moss-moon-003-sft" # "chatglm-6b"
+
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain import PromptTemplate, LLMChain, ConversationChain
@@ -46,7 +49,7 @@ from langchain.schema import (
     LLMResult,
     PromptValue,
 )
-from langchain.memory import ChatMessageHistory, ConversationBufferMemory, ConversationBufferWindowMemory
+from langchain.memory import ChatMessageHistory, ConversationBufferMemory, ConversationBufferWindowMemory, ConversationTokenBufferMemory
 from langchain.utilities import SerpAPIWrapper
 from langchain.agents import AgentType, Tool, AgentExecutor, LLMSingleActionAgent, AgentOutputParser
 from langchain.schema import AgentAction, AgentFinish
@@ -99,39 +102,56 @@ def get_text(message: MessageChain) -> str:
     return "".join([plain.text for plain in message.get(Plain)])
 
 class ChatOpenAILogger(ChatOpenAI):
-    def __call__(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
-    ):
-        ret = {
-            "messages": [dataclasses.asdict(m) for m in messages],
-            "stop": stop
-        }
+    def completion_with_retry(self, **kwargs: Any) -> Any:
         with open("chatgpt.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps(ret, ensure_ascii=False) + '\n')
-        return self._generate(messages, stop=stop).generations[0].message
+            f.write(json.dumps(kwargs, ensure_ascii=False) + '\n')
+        return super(ChatOpenAILogger, self).completion_with_retry(**kwargs)
+
 
 class ChatGPTPlugin(BasePlugin):
     def __init__(self, bot_id: int) -> None:
         self.bot_id = bot_id
         self.convs = {}
-        self.url = "https://openai.api2d.net/v1/chat/completions"
         self.model = ChatOpenAILogger(model_name=MODEL_NAME, temperature=0.9, max_tokens=512)
-
+        self.prompt = self.create_chat_prompt()
         self.enable()
     
     def enter_plugin(self):
         pass
+    
+    def create_chat_prompt(self):
+        system_message_prompt = SystemMessagePromptTemplate.from_template(conv_xiahuan.copy().system)
+        human_message_prompt = HumanMessagePromptTemplate.from_template("你好，能帮我做一些事情吗？")
+        ai_message_prompt = AIMessagePromptTemplate.from_template("你好呀？有什么需要帮助呢？喵~~╰(○'◡'○)╮")
+        history_prompt = MessagesPlaceholder(variable_name="chat_history")
 
+        input_message_prompt = HumanMessagePromptTemplate.from_template("{input}")
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                system_message_prompt, human_message_prompt, ai_message_prompt,
+                history_prompt, input_message_prompt
+            ]
+        )
+        return prompt
+    
     def create_chain(self):
+        """
         history = ConversationBufferWindowMemory(
             return_messages=True, 
             human_prefix="user", 
             ai_prefix="assistant", 
             memory_key="chat_history", 
-            k=5
+            k=10
         )
+        """
+        history = ConversationTokenBufferMemory(llm=self.model,
+                                        return_messages=True, 
+                                        human_prefix="user", 
+                                        ai_prefix="assistant", 
+                                        memory_key="chat_history", 
+                                        max_token_limit=2048)
         chain = ConversationChain(
-            prompt=self.prompt,
+            prompt=self.create_chat_prompt(),
             llm=self.model,
             memory=history,
             verbose=True
@@ -151,7 +171,7 @@ class ChatGPTPlugin(BasePlugin):
                 self.convs[group_id] = self.create_chain()
             conv = self.convs[group_id]
             if self.is_asking_me(message, quote) or "夏寒" in question or "寒寒" in question:
-                answer = conv.predict(input=question)
+                answer = conv.run(question)
                 return [sender.group, Plain(answer), source]
         elif type == "friend":
             friend_id = sender.id
@@ -159,7 +179,7 @@ class ChatGPTPlugin(BasePlugin):
                 self.convs[friend_id] = self.create_chain()
             conv = self.convs[friend_id]
             if self.is_asking_me(message, quote):
-                answer = conv.predict(input=question)
+                answer = conv.run(question)
                 return [sender, Plain(answer), source]
 
     def exit_plugin(self):

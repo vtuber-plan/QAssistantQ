@@ -24,11 +24,11 @@ with open("openai_key.txt", "r", encoding="utf-8") as f:
 
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
-# os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
-# MODEL_NAME = "gpt-3.5-turbo"
+os.environ["OPENAI_API_BASE"] = "https://openai.api2d.net/v1"
+MODEL_NAME = "gpt-3.5-turbo"
 
-os.environ["OPENAI_API_BASE"] = "http://localhost:8000/v1"
-MODEL_NAME = "7b-bf16" # "Open-Llama-V1" # "moss-moon-003-sft" # "chatglm-6b"
+# os.environ["OPENAI_API_BASE"] = "http://localhost:8000/v1"
+# MODEL_NAME = "7b-bf16" # "Open-Llama-V1" # "moss-moon-003-sft" # "chatglm-6b"
 
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
