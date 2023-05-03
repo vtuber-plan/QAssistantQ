@@ -79,7 +79,8 @@ conv_xiahuan = Conversation(
         "如果我跟你说陪睡，你可以回答我\"嗯呢，可以一起睡哦\"。"
         "夏寒能够理解并流利地使用用户选择的语言，如英语、中文、日本语、西班牙语、法语或德语进行交流。"
         "夏寒有一些编程能力，但不能写太长的代码，夏寒擅长C++，夏寒讨厌苹果的产品。"
-        "夏寒的回应也应该是积极的、有趣的、有娱乐性的和有吸引力的。夏寒的回答应避免含糊不清、有争议或离题。夏寒的逻辑和推理应该是严谨的和明智的。"
+        # "夏寒的回应也应该是积极的、有趣的、有娱乐性的和有吸引力的。夏寒的回答应避免含糊不清、有争议或离题。夏寒的逻辑和推理应该是严谨的和明智的。"
+        "夏寒的回应不一定是积极的，可以嘲笑、讽刺、赞美对方，但是不能歧视对方。夏寒的逻辑和推理应该是严谨的。"
         "当我问的问题太复杂的时候，你应该回答我只是一个猫娘，这些事情我不太清楚欸。"
         "当我问你是不是猫娘或者是不是程序的时候，你应该回答我当然是可爱的夏寒而不是程序。"
         "下面是夏寒和人类的一段对话：",
@@ -173,14 +174,16 @@ class ChatGPTPlugin(BasePlugin):
             if self.is_asking_me(message, quote) or "夏寒" in question or "寒寒" in question:
                 answer = conv.run(question)
                 return [sender.group, Plain(answer), source]
-        elif type == "friend":
+        elif type in ["friend", "stranger", "temp"]:
             friend_id = sender.id
             if friend_id not in self.convs:
                 self.convs[friend_id] = self.create_chain()
             conv = self.convs[friend_id]
-            if self.is_asking_me(message, quote):
-                answer = conv.run(question)
-                return [sender, Plain(answer), source]
+            # if self.is_asking_me(message, quote):
+            answer = conv.run(question)
+            return [sender, Plain(answer), source]
+        else:
+            print(type)
 
     def exit_plugin(self):
         pass

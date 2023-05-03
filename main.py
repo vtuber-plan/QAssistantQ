@@ -35,7 +35,7 @@ plugins: List[BasePlugin] = [
     RepeatPlugin(BOT_QQ_ID),
 ]
 
-async def message_listener(app: Ariadne, message: MessageChain, 
+async def message_listener(app: Ariadne, chat_type:str, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
     reply_messages = []
@@ -48,17 +48,7 @@ async def message_listener(app: Ariadne, message: MessageChain,
     for plugin in plugins:
         if not plugin.is_activated:
             continue
-        if isinstance(sender, Friend):
-            t = "friend"
-        elif isinstance(sender, Member):
-            t = "group"
-        elif isinstance(sender, Client):
-            t = "client"
-        elif isinstance(sender, Stranger):
-            t = "stranger"
-        else:
-            t = None
-        plugin_ret = plugin.do_plugin(t, message, sender, source, quote)
+        plugin_ret = plugin.do_plugin(chat_type, message, sender, source, quote)
         if plugin_ret is not None:
             reply_messages.append(plugin_ret)
     
@@ -74,25 +64,25 @@ async def message_listener(app: Ariadne, message: MessageChain,
 async def group_message_listener(app: Ariadne, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
-    await message_listener(app, message, sender, source, quote)
+    await message_listener(app, "group", message, sender, source, quote)
 
 @app.broadcast.receiver("FriendMessage")
 async def friend_message_listener(app: Ariadne, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
-    await message_listener(app, message, sender, source, quote)
+    await message_listener(app, "friend", message, sender, source, quote)
 
 @app.broadcast.receiver("TempMessage")
 async def temp_message_listener(app: Ariadne, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
-    await message_listener(app, message, sender, source, quote)
+    await message_listener(app, "temp", message, sender, source, quote)
 
 @app.broadcast.receiver("StrangerMessage")
 async def stranger_message_listener(app: Ariadne, message: MessageChain, 
                            sender: Union[Friend, Member, Client, Stranger],
                            source: Source, quote: Optional[Quote] = None):
-    await message_listener(app, message, sender, source, quote)
+    await message_listener(app, "stranger", message, sender, source, quote)
 
 
 Ariadne.launch_blocking()

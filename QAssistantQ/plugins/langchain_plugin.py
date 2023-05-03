@@ -323,15 +323,16 @@ class LangChainPlugin(BasePlugin):
                 answer = conv.run(input=question)
                 answer = hexie(answer)
                 return [sender.group, Plain(answer), source]
-        elif type == "friend":
+        elif type in ["friend", "stranger", "temp"]:
             friend_id = sender.id
             if friend_id not in self.convs:
                 self.convs[friend_id] = self.create_chain(sender.name, str(sender.id))
             conv = self.convs[friend_id]
-            if self.is_asking_me(message, quote):
-                answer = conv.run(input=question)
-                answer = hexie(answer)
-                return [sender, Plain(answer), source]
+            # if self.is_asking_me(message, quote):
+            answer = conv.run(input=question)
+            answer = hexie(answer)
+            return [sender, Plain(answer), source]
+        
 
     def exit_plugin(self):
         pass
